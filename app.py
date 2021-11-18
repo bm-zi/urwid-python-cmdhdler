@@ -2,6 +2,10 @@ import urwid
 import os, sys, subprocess, pathlib
 import sqlite3
 
+__author__ = "bmzi"
+__version__ = "1.0"
+__status__ = "Under Development"
+
 # -------- 
 # DATABASE
 # --------
@@ -133,9 +137,9 @@ class CommandModel(object):
         else:
             print("Database not empty, list not uploaded.")
 
-# ----------------------
-# DATABASE OBJECT CHECKS
-# ----------------------
+# ------------------------------
+# You may need to run followings:
+# -------------------------------
 # im = CommandModel()
 # im.upload_file_to_db('cmds')
 # im.add('item number 1000')
