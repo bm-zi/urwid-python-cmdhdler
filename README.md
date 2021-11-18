@@ -3,9 +3,10 @@
 
 This is a simple terminal-based application to manage Linux commands, on any Linux host.
 
-You can run, add, update, remove any Linux command from a sqlite database.
+You can search, run, add, update, remove any Linux command from a sqlite database.
 The application also can handle uploading a file with the list of commands
-into the dabase, or download all commands from database.
+into the dabase, or download all commands from database, into the same file named as
+'download'.
 
 
 ### Requirements:
