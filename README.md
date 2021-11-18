@@ -22,8 +22,8 @@ $ python3 app.py
 ```
 
 ### Note:
-If no database file provided, application will automatically creates a sample databse file with some elementary commands as demo. You can populate the initialized database by click on upload button and a file named as 'download'
-with your list of command in the same directory leval as file app.py.
+If no database file provided, application will automatically creates a sample databse file with some elementary commands as demo. 
+You can populate the initialized database by click on upload button while you provide a file named as 'download' with your list of commands in the same directory leval as file app.py.
 
 Here's an image of the application main screen:
 ![urwid-python-cmdhdler](screenshot.png)
