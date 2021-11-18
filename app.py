@@ -6,9 +6,9 @@ __author__ = "bmzi"
 __version__ = "1.0"
 __status__ = "Under Development"
 
-# -------- 
-# DATABASE
-# --------
+# -------------- 
+# DATABASE MODEL
+# --------------
 class CommandModel(object):
     def __init__(self):
         self._db = sqlite3.connect('data.db')
@@ -253,18 +253,30 @@ class MainWidget(urwid.WidgetWrap):
                     Utils.restart_script() 
 
             help_text = u'''
+            |||||||||||||||||||| SHORTCUT KEYS |||||||||||||||||||||
+
+            tab ............. Goes to prompt. prompt is ": " and is
+                              located at the bottom of commands list.
+
             ctrl up ......... Goes to search field.
             ctrl down ....... Goes to function window at the bottom.
             f5 .............. Restarts the app.
-            tab ............. Goes to prompt.
             ctrl x .......... Runs selected command.
             ctrl e .......... Exits app. (or use Quit button)
+
+            
+            |||||||||||||||||||| BUTTONS |||||||||||||||||||||||||||
+
+            Update .......... Edits and updates selected command, 
+                              in vim editor.
 
             Add ............. Adds the command typed in prompt.
             Remove .......... Removes selected command.
             Doownload ....... Downloads all commands to file download.
             Upload .......... Uploads file download into database.
+
             Quit ............ Quits app and removes temp files.
+
 
             Press any key to exit this page!
             '''
@@ -312,10 +324,10 @@ class MainWidget(urwid.WidgetWrap):
             Utils.exit_program()
 
         all_buttons = []
-        actions = ['Edit','Add', 'Remove', 'Download', 'Upload', 'Quit']
+        actions = ['Update','Add', 'Remove', 'Download', 'Upload', 'Quit']
         for b in actions:
             button = urwid.LineBox(urwid.Filler(urwid.Button(b)))
-            if b == 'Edit':
+            if b == 'Update':
                 urwid.connect_signal(button.base_widget, 'click', edit_cmd)
             elif b == 'Add':
                 urwid.connect_signal(button.base_widget, 'click', add_cmd)
