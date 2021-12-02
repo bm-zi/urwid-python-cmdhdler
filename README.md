@@ -26,6 +26,15 @@ Simply copy app.py into a directory(preferably, an empty one) and then let the a
 $ python3 app.py
 ```
 
+### Note:
+If no database file provided, application will automatically creates a sample databse file with some elementary commands as demo. 
+You can populate the initialized database by click on upload button while you provide a file named as 'download' with your list of commands in the same directory leval as file app.py.
+
+Here's an image of the application main screen:
+![urwid-python-cmdhdler](screenshot.png)
+
+
+
 ### Features
 You can figure out more about the features included in this app, only by refereing to help on  shortcut keys.
 Here is a snapshot of help:
@@ -56,10 +65,4 @@ Here is a snapshot of help:
 
 
 
-### Note:
-If no database file provided, application will automatically creates a sample databse file with some elementary commands as demo. 
-You can populate the initialized database by click on upload button while you provide a file named as 'download' with your list of commands in the same directory leval as file app.py.
-
-Here's an image of the application main screen:
-![urwid-python-cmdhdler](screenshot.png)
 
