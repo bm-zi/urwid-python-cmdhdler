@@ -11,15 +11,50 @@ into the dabase, or download all commands from database, into the same file name
 
 ### Requirements:
 - Python 3.5 or up 
-- urwid package needed to be installed by:<br>
+- urwid
+- pyperclip
+
+<br>
+Installation of dependent packages is done by:<br>
 ```shell
-$ pip install urwid
+$ pip install urwid, pyperclip
 ```
 
+### How to use this app
 Simply copy app.py into a directory(preferably, an empty one) and then let the application run by: <br>
 ```shell
 $ python3 app.py
 ```
+
+### Features
+You can figure out more about the features included in this app, only by refereing to help on  shortcut keys.
+Here is a snapshot of help:
+
+            |||||||||||||||||||| SHORTCUT KEYS |||||||||||||||||||||
+
+            tab ............. Goes to prompt. prompt is ": " and is
+                              located at the bottom of command menu.
+
+            ctrl up ............ Goes to search field.
+            ctrl down .......... Goes to function window at the bottom.
+
+            f5 ................. Restarts the app.
+            f6 ................. Removes all temp files, used by app
+            f8 ................. Exits app. (or use Quit button)
+            
+            ctrl e ............. Runs command and logs output.
+            ctrl x ............. Runs command in a separate terminal.
+            ctrl o ............. Open commands history.
+
+            Copy ............... Command is copied into clipboard
+            Update ............. Updates the command typed in prompt.
+            Add ................ Adds the command typed in prompt.
+            Remove ............. Removes selected command.
+            Doownload .......... Downloads all commands to file download.
+            Upload ............. Uploads file download into database.
+
+
+
 
 ### Note:
 If no database file provided, application will automatically creates a sample databse file with some elementary commands as demo. 

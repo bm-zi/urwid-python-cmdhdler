@@ -1,10 +1,17 @@
-import urwid
-import os, sys, subprocess, pathlib
-import sqlite3
+# app.py
 
 __author__ = "bmzi"
-__version__ = "1.0"
+__version__ = "1.1"
 __status__ = "Under Development"
+
+import urwid
+from subprocess import call
+import subprocess
+import os, sys
+
+import sqlite3
+import pathlib
+
 
 # -------------- 
 # DATABASE MODEL
@@ -25,7 +32,6 @@ class CommandModel(object):
 
     def add(self, item):
         '''Add an item to databse into the table items'''
-
         self._db.cursor().execute(
             '''INSERT INTO items(item) VALUES(:item)''', 
             (item,))
@@ -35,7 +41,7 @@ class CommandModel(object):
     def upload_list_to_db(self, cmd_list):
         '''
             Populate table items with lines taken from a
-            list named as CMDLIST at the end of the script.
+            list named as SAMPLE_COMMANDS at the end of the script.
         '''
         try:
             for cmd in cmd_list:
@@ -64,7 +70,6 @@ class CommandModel(object):
             Get list of rows in table items, 
             each row as an object of class row_factory
         '''
-        # return self._db.cursor().execute("SELECT item FROM items").fetchall()
         all = self._db.cursor().execute("SELECT item FROM items ORDER BY id DESC").fetchall()
         rows = []
         for el in all:
@@ -101,19 +106,6 @@ class CommandModel(object):
         else:
             return self.get_item(self.current_id)
     
-
-    # Not used yet
-    def update_current_item(self, item):
-        if self.current_id is None:
-            self.add(item)
-        else:
-    
-            self._db.cursor().execute(
-                    "UPDATE items SET item=:item WHERE id=:id", 
-                    {"item":item, "id": self.current_id}
-                )
-        self._db.commit()
-
 
     def delete_item(self, item):
         self._db.cursor().execute('''
@@ -153,6 +145,8 @@ class CommandModel(object):
 #     print(dict(el)['id'], "\t" , dict(el)['item'])
 
 
+from pyperclip import copy
+
 
 # -----------------
 # Search Box Widget
@@ -171,14 +165,24 @@ class SearchWidget(urwid.WidgetWrap):
 
 
     def get_cmd_list(self):
-        val = self.edit.edit_text
-        if val == '' or val == ' ' or val == None:
+        searchfield_value = self.edit.edit_text
+        if searchfield_value == '' or searchfield_value == ' ' or searchfield_value == None:
             return self.model.list_items()
         else:
             cmds = self.model.filter_item(str(self.edit.edit_text).strip())
-            main(cmds)
-            raise urwid.ExitMainLoop()
-            
+            # main(cmds)
+            if cmds:
+                palette = [('unselected', 'default', 'default'),
+                ('selected', 'standout', 'default', 'bold')]
+                mw = urwid.Padding(MainWidget(cmds), left=2, right=2)
+                top = urwid.Overlay(mw, urwid.SolidFill(u'\N{MEDIUM SHADE}'),
+                                align='center', width=('relative', 80),
+                                valign='middle', height=('relative', 80),
+                                min_width=20, min_height=9)
+                urwid.MainLoop(top, palette=palette).run()
+            else:
+                Utils.restart_script()
+
 
 # -----------
 # MAIN WIDGET
@@ -188,11 +192,11 @@ class MainWidget(urwid.WidgetWrap):
         self.model = CommandModel()
         self.edit = SearchWidget()
         self.labels = labels
-        self.sw = urwid.LineBox(urwid.Filler(self.edit))
-        self.lw = urwid.SimpleFocusListWalker([
+        self.search_widget = urwid.LineBox(urwid.Filler(self.edit))
+        self.list_walker = urwid.SimpleFocusListWalker([
             urwid.AttrMap(urwid.SelectableIcon(label), 'unselected', focus_map='selected') for label in self.labels
             ])
-        self.lb = urwid.Pile(self.lw)
+        self.list_box = urwid.Pile(self.list_walker)
         self.ew = [urwid.Edit(u": ", command, wrap='clip') for command in self.labels]
         self.body = urwid.Filler(self.ew[0])
         self.btns = self.create_buttons()
@@ -202,22 +206,22 @@ class MainWidget(urwid.WidgetWrap):
 
 
     def update_focus(self, new_focus_position=None):
-        self.lb.focus_item.set_attr_map({None: 'unselected'})
+        self.list_box.focus_item.set_attr_map({None: 'unselected'})
         try:
-            self.lb.focus_position = new_focus_position
+            self.list_box.focus_position = new_focus_position
             self.body = urwid.Filler(self.ew[new_focus_position])
         except IndexError:
             pass
-        self.lb.focus_item.set_attr_map({None: 'selected'})
+        self.list_box.focus_item.set_attr_map({None: 'selected'})
         self.pile = self.piler()
         super().__init__(urwid.LineBox(self.pile, "COMMAND HANDLER"))
 
 
     def piler(self):
         return urwid.Pile([
-                            ('fixed', 3, self.sw),
-                            ('weight', 90, urwid.ListBox(self.lw)),
-                            ('fixed', 1, urwid.Filler(urwid.Divider())),
+                            ('fixed', 3, self.search_widget),
+                            ('weight', 89, urwid.ListBox(self.list_walker)),
+                            ('fixed', 2, urwid.Filler(urwid.Divider())),
                             ('fixed', 2, self.body),
                             ('fixed', 3, self.btns),
                             ('fixed', 1, urwid.Filler(
@@ -230,11 +234,22 @@ class MainWidget(urwid.WidgetWrap):
 
     def keypress(self, size, key):
         if key == 'up':
-            self.update_focus(new_focus_position=self.lb.focus_position - 1)
+            self.update_focus(new_focus_position=self.list_box.focus_position - 1)
         elif key == 'down':
-            self.update_focus(new_focus_position=self.lb.focus_position + 1)
+            self.update_focus(new_focus_position=self.list_box.focus_position + 1)
+        elif key == 'ctrl e':
+            Utils.run_cmd(self.body.base_widget.edit_text)
         elif key == 'ctrl x':
-            OutputWidget(self.body.base_widget.edit_text)
+            cmd = self.body.base_widget.edit_text
+            prompt = 'echo  Press \<Enter\> to continue!'
+            os.system(f"gnome-terminal --tab -- bash -c \"{cmd} ; echo; echo; {prompt} ; read line \" ")
+        elif key == 'ctrl o':
+            if Utils.is_tool('vim'):
+                os.system("vim \"+normal G$\" output")       
+                Utils.restart_script()
+        elif key == 'ctrl u':
+            if self.body.base_widget.edit_text:
+                self.body.base_widget.edit_text = ''   
         elif key == 'tab':
             self.pile.focus_item = 3
         elif key == 'ctrl home':
@@ -245,47 +260,72 @@ class MainWidget(urwid.WidgetWrap):
             return super().keypress(size, key)
         elif key == 'f5':
             Utils.restart_script()
-        elif key == 'ctrl e':
+        elif key == 'f6':
+            Utils.remove_temp_files()
+        elif key == 'f8':
             Utils.exit_program()
         elif key == 'f1':
             def resume_app(key):
                 if key:
-                    Utils.restart_script() 
-
+                    Utils.restart_script()
             help_text = u'''
             |||||||||||||||||||| SHORTCUT KEYS |||||||||||||||||||||
 
             tab ............. Goes to prompt. prompt is ": " and is
-                              located at the bottom of commands list.
+                              located at the bottom of command menu.
 
-            ctrl up ......... Goes to search field.
-            ctrl down ....... Goes to function window at the bottom.
-            f5 .............. Restarts the app.
-            ctrl x .......... Runs selected command.
-            ctrl e .......... Exits app. (or use Quit button)
+            ctrl up ............ Goes to search field.
+            ctrl down .......... Goes to function window at the bottom.
 
+            f5 ................. Restarts the app.
+            f6 ................. Removes all temp files, used by app
+            f8 ................. Exits app. (or use Quit button)
             
-            |||||||||||||||||||| BUTTONS |||||||||||||||||||||||||||
+            ctrl e ............. Runs command and logs output.
+            ctrl x ............. Runs command in a separate terminal.
+            ctrl o ............. Open commands history.
 
-            Update .......... Edits and updates selected command, 
-                              in vim editor.
-
-            Add ............. Adds the command typed in prompt.
-            Remove .......... Removes selected command.
-            Doownload ....... Downloads all commands to file download.
-            Upload .......... Uploads file download into database.
-
-            Quit ............ Quits app and removes temp files.
+            Copy ............... Command is copied into clipboard
+            Update ............. Updates the command typed in prompt.
+            Add ................ Adds the command typed in prompt.
+            Remove ............. Removes selected command.
+            Doownload .......... Downloads all commands to file download.
+            Upload ............. Uploads file download into database.
 
 
             Press any key to exit this page!
-            '''
+            '''    
             h = urwid.Filler(urwid.Text(help_text))
             urwid.MainLoop(h, unhandled_input=resume_app).run()
+
         super().keypress(size, key)
 
 
     def create_buttons(self):
+        '''Creates function buttons with click event handlers,
+           in class MainWidget
+        '''
+
+        def upload(button):
+            self.model.upload_file_to_db('download')
+
+        def download(button):
+            cmds_list = self.model.list_items()
+            with open('download', 'w') as f:
+                for el in cmds_list:
+                    f.write(el + "\n")
+            Utils.restart_script()
+
+        def remove_cmd(button):
+            cmd = self.body.base_widget.edit_text
+            self.model.delete_item(cmd)
+            Utils.restart_script()
+
+        def add_cmd(button):
+            cmd = self.body.base_widget.edit_text
+            self.model.add(cmd)
+            Utils.restart_script()
+
         def edit_cmd(button):
             cmd = self.body.base_widget.edit_text
             with open('cmdedit', 'w') as f:
@@ -296,38 +336,19 @@ class MainWidget(urwid.WidgetWrap):
                 self.model.add(f.read().strip())
             Utils.restart_script()
 
-        def add_cmd(button):
+        def copy_to_clipboard(button):
             cmd = self.body.base_widget.edit_text
-            self.model.add(cmd)
+            copy (cmd)
+            # os.system("gnome-terminal --tab -- bash")
             Utils.restart_script()
-
-
-        def remove_cmd(button):
-            cmd = self.body.base_widget.edit_text
-            self.model.delete_item(cmd)
-            Utils.restart_script()
-
-
-        def download(button):
-            cmds_list = self.model.list_items()
-            with open('download', 'w') as f:
-                for el in cmds_list:
-                    f.write(el + "\n")
-            Utils.restart_script()
-
-
-        def upload(button):
-            self.model.upload_file_to_db('download')
-            
-
-        def exit_program(button):
-            Utils.exit_program()
 
         all_buttons = []
-        actions = ['Update','Add', 'Remove', 'Download', 'Upload', 'Quit']
+        actions = ['Copy', 'Update','Add', 'Remove', 'Download', 'Upload']
         for b in actions:
-            button = urwid.LineBox(urwid.Filler(urwid.Button(b)))
-            if b == 'Update':
+            button = urwid.LineBox(urwid.Filler(MyButton(b)))
+            if b == 'Copy':
+                urwid.connect_signal(button.base_widget, 'click', copy_to_clipboard)
+            elif b == 'Update':
                 urwid.connect_signal(button.base_widget, 'click', edit_cmd)
             elif b == 'Add':
                 urwid.connect_signal(button.base_widget, 'click', add_cmd)
@@ -337,88 +358,86 @@ class MainWidget(urwid.WidgetWrap):
                 urwid.connect_signal(button.base_widget, 'click', download)
             elif b == 'Upload':
                 urwid.connect_signal(button.base_widget, 'click', upload)
-            elif b == 'Quit':
-                urwid.connect_signal(button.base_widget, 'click', exit_program)
+            
             all_buttons.append(button)
         return urwid.Columns(all_buttons, dividechars=1, min_width=10)
 
-
-# ---------------------
-# COMMAND OUTPUT WIDGET
-# ---------------------
-class OutputWidget(urwid.WidgetWrap):
-    def __init__(self, cmd):
-        self.cmd_str = cmd
-        self.cmd_list = list(str(cmd).split())
-        self.term = urwid.Terminal(['/usr/bin/sh', 'cmdfile'], encoding='utf-8')
-        self.btn = urwid.Button('EXIT')
-        self._w = self.show_output()
-        
-    def show_output(self):
-        Utils.command_to_file(self.cmd_str)
-        urwid.set_encoding('utf8')
-        exitbtn = urwid.Filler(self.btn, valign='middle')
-        term_widget = urwid.LineBox(self.term, title=self.cmd_str, title_align='left')
-        frame = urwid.LineBox(urwid.Pile([
-                                            ('weight', 70, term_widget),
-                                            ('fixed', 1, exitbtn),
-                                            ], focus_item=1
-                                            ),
-                                    title='OUTPUT')
-        def exitbtn(btn):
-            Utils.restart_script()
-
-        urwid.connect_signal(self.btn, 'click', exitbtn)
-        loop = urwid.MainLoop(frame)
-        loop.screen.set_terminal_properties(256)
-        loop.run()
+class MyButton(urwid.Button):
+    button_left = urwid.Text("")
+    button_right = urwid.Text("")
+    def __init__(self, label, on_press=None, user_data=None):
+        super().__init__(label, on_press=on_press, user_data=user_data)
 
 
 # ------------------------
 # BUNDLE OF UTIL FUNCTIONS
 # ------------------------
 class Utils:
-    def commands_list():
-        myfile = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'cmds')
-        l = []
-        with open(myfile)as f:
-            for line in f.readlines():
-                l.append(line.strip())
-            return l
 
-    def command_to_file(cmd):
-        with open('output', 'a') as f:
-            f.write("\n\n\n")
-            f.write(f"$ {cmd}")
-
+    def run_cmd(cmd):
         with open('cmdfile', 'w') as f:
-            cmd = cmd + ' | tee -a output'
             f.write(cmd)
-    
-    def restart_script():
+        try:
+            out = subprocess.Popen(['/usr/bin/sh', 'cmdfile'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cmd_output, _ = out.communicate()
+
+            cmd_output_str = cmd_output.decode(encoding='utf-8')
+            _output = list(cmd_output_str.split('\n'))
+
+            org_stdout = sys.stdout
+            sys.stdout = open('output', 'a', encoding='utf-8')
+            
+            print(f"$ {cmd}")
+            for line in _output:
+                print(line)
+            print()
+
+            sys.stdout.close()
+            sys.stdout = org_stdout
+
+        except Exception as e:
+            with open('output.txt', 'w', encoding='utf-8') as f:
+                f.write(str(e))
+                    
+        if Utils.is_tool('vim'):
+            os.system("vim \"+normal G$\" output")       
+            Utils.restart_script()
+        elif Utils.is_tool('gedit'):
+            os.system("gedit output +")
+            Utils.restart_script()
+        else:
+            Utils.restart_script()
+
+
+    def restart_script():  # used by <f5> key
         os.system('stty echo')  # os.system('reset')
         os.execv(sys.executable, ['python'] + sys.argv)
 
 
-    def exit_program():
-        if os.path.isfile('cmdedit'):
-            os.remove('cmdedit')
-        if os.path.isfile('cmdfile'):
-            os.remove('cmdfile')
-        if os.path.isfile("output"):
-            os.remove('output')
-        if os.path.isfile("download"):
-            os.remove('download')
-        raise urwid.ExitMainLoop()  
+    def is_tool(name):
+        """Check whether `name` is in the PATH and marked as executable."""
+        from shutil import which
+        return which(name) is not None
 
+
+    def remove_temp_files(): # used by <f6> key
+        files = ['cmdedit', 'cmdfile', 'output', 'download']
+        for f in files:
+            if os.path.isfile(f):
+                os.remove(f)
+    
+
+    def exit_program(): # used by <F8> key
+        Utils.remove_temp_files()
+        raise urwid.ExitMainLoop()
 
 
 # -----------------------------------------
 # BACKUP OF COMMANDS LIST, IF DB IS EMPTY,
 # WILL AUTOMATICALLY WILL BE UPLOADED TO DB.  
 # -----------------------------------------
-CMDLIST ="""
-ls -ltr
+SAMPLE_COMMANDS ="""
 tree -L 1 --dirsfirst
 df -h / /home
 cal
@@ -426,9 +445,9 @@ sensors
 lastlog
 route
 ip addr show wlp2s0
-ps -ef
+ps -efa
 du -sh .
-netstat
+netstat -n
 last
 groups
 iostat
@@ -440,41 +459,36 @@ dpkg -l
 systemctl list-sockets
 systemctl list-unit-files
 stat -c %a /etc/passwd
-df
+df -t ext4 -h
 uname -a
-ps -efa
-echo end of the file!
-"""
+echo end of the file!"""
 
 
 # ------------
 # MAIN PROGRAM
 # ------------
 def main(cmds):
-    cmd_list = CMDLIST.split('\n')
+    sample_cmds_list = SAMPLE_COMMANDS.split('\n')
 
-    CURRENT_DIR = os. getcwd()
     cm = CommandModel()
-    cm.populate_db(cmd_list)
+    cm.populate_db(sample_cmds_list)
 
     if cmds:
         cmdlist = cmds
     else:
         cmdlist = cm.list_items()
 
-
     palette = [('unselected', 'default', 'default'),
             ('selected', 'standout', 'default', 'bold')]
-    subprocess.call('clear') 
 
+    call('clear')
 
     mw = urwid.Padding(MainWidget(cmdlist), left=2, right=2)
     top = urwid.Overlay(mw, urwid.SolidFill(u'\N{MEDIUM SHADE}'),
-                    align='center', width=('relative', 80),
-                    valign='middle', height=('relative', 80),
+                    align='center', width=('relative', 90),
+                    valign='middle', height=('relative', 85),
                     min_width=20, min_height=9)
     urwid.MainLoop(top, palette=palette).run()
 
-
-
-main(cmds=None)
+if __name__ == '__main__':
+    main(cmds=None)
